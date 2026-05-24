@@ -1,222 +1,370 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Uni-Sign ASL Translator</title>
-    <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniSign Live Translator</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", sans-serif;
+      color: #fff;
+      background:
+        radial-gradient(circle at top left, rgba(98,0,234,0.35), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(0,188,212,0.28), transparent 30%),
+        linear-gradient(135deg, #0b1020, #121a2f 45%, #09111f);
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 25px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1400px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 24px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      margin-top: 10px;
+      color: #bfd0ff;
+      line-height: 1.5;
+    }
+
+    .live-pill {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(30,215,96,0.15);
+      border: 1px solid rgba(30,215,96,0.3);
+      color: #9df0bb;
+      font-weight: 600;
+    }
+
+    #video-container {
+      position: relative;
+      margin-top: 20px;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    video,
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .overlay-chip {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      z-index: 10;
+
+      background: rgba(0,0,0,0.6);
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 18px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #dce6ff;
+    }
+
+    #prediction {
+      min-height: 100px;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      font-size: 2rem;
+      font-weight: 700;
+
+      background: linear-gradient(
+        135deg,
+        rgba(124,77,255,0.22),
+        rgba(0,194,255,0.18)
+      );
+
+      border: 1px solid rgba(162,191,255,0.2);
+    }
+
+    #confidence {
+      margin-top: 12px;
+      color: #c7d7ff;
+      text-align: center;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #7c4dff, #00c2ff);
+      transition: width 0.2s ease;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: #c9d6ff;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      flex: 1;
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    #startBtn {
+      background: linear-gradient(135deg, #6d5dfc, #4f9cff);
+      color: white;
+    }
+
+    #stopBtn {
+      background: linear-gradient(135deg, #ff6b81, #ff8a5b);
+      color: white;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      padding: 12px;
+      border-radius: 14px;
+
+      background: linear-gradient(
+        135deg,
+        rgba(124,77,255,0.14),
+        rgba(0,194,255,0.1)
+      );
+
+      border: 1px solid rgba(162,191,255,0.16);
+    }
+
+    .history-word {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .history-empty {
+      text-align: center;
+      color: #aebfe8;
+      padding: 18px;
+    }
+
+    .tips-list {
+      line-height: 1.8;
+      color: #d6e1ff;
+      padding-left: 20px;
+    }
+
+    @media (max-width: 1100px) {
+      .app-shell {
+        grid-template-columns: 1fr;
       }
-      body {
-        font-family: "Segoe UI", sans-serif;
-        background: #f0f4f8;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-      }
-      .card {
-        background: white;
-        border-radius: 16px;
-        padding: 40px;
-        width: 520px;
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-        text-align: center;
-      }
-      h1 {
-        font-size: 1.8em;
-        margin-bottom: 8px;
-        color: #1a1a2e;
-      }
-      p.sub {
-        color: #666;
-        margin-bottom: 28px;
-        font-size: 0.95em;
+    }
+
+    @media (max-width: 700px) {
+      .button-row {
+        flex-direction: column;
       }
 
-      .upload-area {
-        border: 2px dashed #a0aec0;
-        border-radius: 12px;
-        padding: 30px;
-        cursor: pointer;
-        transition: border-color 0.2s;
-        margin-bottom: 20px;
+      #prediction {
+        font-size: 1.4rem;
       }
-      .upload-area:hover {
-        border-color: #4a90e2;
-      }
-      .upload-area input {
-        display: none;
-      }
-      .upload-area .icon {
-        font-size: 2.5em;
-        margin-bottom: 8px;
-      }
-      .upload-area p {
-        color: #718096;
-      }
-      .file-name {
-        color: #4a90e2;
-        font-weight: 600;
-        margin-top: 8px;
-      }
+    }
+  </style>
+</head>
 
-      video {
-        width: 100%;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        display: none;
-      }
+<body>
 
-      button {
-        background: #4a90e2;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 14px 40px;
-        font-size: 1em;
-        cursor: pointer;
-        width: 100%;
-        transition: background 0.2s;
-      }
-      button:hover {
-        background: #357abd;
-      }
-      button:disabled {
-        background: #a0aec0;
-        cursor: not-allowed;
-      }
+<div class="app-shell">
 
-      .status {
-        margin-top: 20px;
-        font-size: 0.9em;
-        color: #718096;
-      }
-      .result-box {
-        margin-top: 24px;
-        background: #ebf8ff;
-        border-left: 4px solid #4a90e2;
-        border-radius: 8px;
-        padding: 16px;
-        display: none;
-      }
-      .result-box .label {
-        font-size: 0.8em;
-        color: #718096;
-        margin-bottom: 4px;
-      }
-      .result-box .prediction {
-        font-size: 1.4em;
-        font-weight: 700;
-        color: #2b6cb0;
-      }
-      .warning {
-        background: #fffbeb;
-        border-left: 4px solid #f6ad55;
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 0.85em;
-        color: #744210;
-        margin-bottom: 20px;
-        text-align: left;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>🤟 ASL Translator</h1>
-      <p class="sub">Upload a sign language video to get a translation</p>
+  <!-- LEFT -->
+  <section class="panel">
 
-      <div class="warning">
-        ⏳ <strong>CPU mode:</strong> Inference may take several minutes per
-        video. Please be patient after clicking Translate.
-      </div>
+    <h1>UniSign Live Translator</h1>
 
-      <div
-        class="upload-area"
-        onclick="document.getElementById('videoInput').click()"
-      >
-        <div class="icon">📹</div>
-        <p>Click to upload a video</p>
-        <p class="file-name" id="fileName">No file selected</p>
-        <input
-          type="file"
-          id="videoInput"
-          accept="video/*"
-          onchange="onFileSelected(event)"
-        />
-      </div>
-
-      <video id="preview" controls></video>
-
-      <button id="translateBtn" onclick="translate()" disabled>
-        Translate
-      </button>
-
-      <p class="status" id="status"></p>
-
-      <div class="result-box" id="resultBox">
-        <div class="label">Predicted Sign</div>
-        <div class="prediction" id="prediction"></div>
-      </div>
+    <div class="subtitle">
+      Real-time sign language translation using MediaPipe Holistic and UniSign deep learning model.
     </div>
 
-    <script>
-      function onFileSelected(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    <div class="live-pill">
+      ● Live Detection
+    </div>
 
-        document.getElementById("fileName").innerText = file.name;
+    <div id="video-container">
 
-        const preview = document.getElementById("preview");
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
+      <video id="video" autoplay muted playsinline></video>
 
-        document.getElementById("translateBtn").disabled = false;
-        document.getElementById("resultBox").style.display = "none";
-        document.getElementById("status").innerText = "";
-      }
+      <canvas id="canvas"></canvas>
 
-      async function translate() {
-        const file = document.getElementById("videoInput").files[0];
-        if (!file) return;
+      <div class="overlay-chip" id="overlayStatus">
+        Ready
+      </div>
 
-        const btn = document.getElementById("translateBtn");
-        const status = document.getElementById("status");
-        const resultBox = document.getElementById("resultBox");
+    </div>
 
-        btn.disabled = true;
-        btn.innerText = "Translating...";
-        status.innerText =
-          "⏳ Processing video and running inference. This may take a few minutes on CPU...";
-        resultBox.style.display = "none";
+    <div class="card" style="margin-top:20px;">
 
-        const formData = new FormData();
-        formData.append("video", file);
+      <h3>Prediction History</h3>
 
-        try {
-          const res = await fetch("http://localhost:5000/predict", {
-            method: "POST",
-            body: formData
-          });
-          const data = await res.json();
+      <div class="history-list" id="predictionHistory">
+        <div class="history-empty">
+          No prediction history yet
+        </div>
+      </div>
 
-          if (data.error) {
-            status.innerText = "❌ Error: " + data.error;
-          } else {
-            status.innerText = "✅ Done!";
-            document.getElementById("prediction").innerText = data.prediction;
-            resultBox.style.display = "block";
-          }
-        } catch (err) {
-          status.innerText = "❌ Could not reach server. Is server.py running?";
-        } finally {
-          btn.disabled = false;
-          btn.innerText = "Translate";
-        }
-      }
-    </script>
-  </body>
+      <div id="previousConfidence" style="margin-top:10px;color:#b7cbff;">
+        Previous confidence: --
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- RIGHT -->
+  <aside class="panel">
+
+    <div class="card">
+      <h3>Status</h3>
+      <div id="status">Initializing camera...</div>
+    </div>
+
+    <div class="card">
+
+      <h3>Capture Progress</h3>
+
+      <div class="progress-meta">
+        <span id="frameCount">Captured valid frames: 0 / 30</span>
+        <span id="progressPercent">0%</span>
+      </div>
+
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <h3>Prediction Result</h3>
+
+      <div id="prediction">
+        Waiting...
+      </div>
+
+      <div id="confidence">
+        Confidence: --
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <h3>Controls</h3>
+
+      <div class="button-row">
+        <button id="startBtn">Start Prediction</button>
+        <button id="stopBtn">Stop Prediction</button>
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <h3>How To Use</h3>
+
+      <ul class="tips-list">
+        <li>Click Start Prediction.</li>
+        <li>Keep at least one hand visible.</li>
+        <li>Perform one complete sign clearly.</li>
+        <li>Wait until prediction appears.</li>
+      </ul>
+
+    </div>
+
+  </aside>
+
+</div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<!-- Your JS -->
+<<script src="/app.js"></script>
+
+</body>
 </html>
