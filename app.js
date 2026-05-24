@@ -93,8 +93,20 @@ function extractUniSignFrame(results) {
   const rightHand = results.rightHandLandmarks || [];
   const face = results.faceLandmarks || [];
 
+  const selectedPose = [
+    pose[0],   // nose
+    pose[11],  // left shoulder
+    pose[12],  // right shoulder
+    pose[13],  // left elbow
+    pose[14],  // right elbow
+    pose[15],  // left wrist
+    pose[16],  // right wrist
+    pose[23],  // left hip
+    pose[24]   // right hip
+  ];
+
   return {
-    body: flattenLandmarks(pose.slice(0, 9), 9, true),
+    body: flattenLandmarks(selectedPose, 9, true),
     left: flattenLandmarks(leftHand, 21),
     right: flattenLandmarks(rightHand, 21),
     face_all: flattenLandmarks(face.slice(0, 18), 18)
