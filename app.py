@@ -5,9 +5,14 @@ import torch
 import numpy as np
 from types import SimpleNamespace
 
-from transformers import data
-
 from models import Uni_Sign
+import os
+import cv2
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
+from rtmlib import Wholebody
+from datasets import S2T_Dataset_online
 
 app = Flask(__name__)
 CORS(app)
@@ -22,8 +27,10 @@ args = SimpleNamespace(
     hidden_dim=256,
     dataset="WLASL",
     rgb_support=False,
-    label_smoothing=0.0
+    label_smoothing=0.0,
+    max_length=256
 )
+
 
 MODEL_PATH = "wlasl_pose_only_islr.pth"
 
@@ -40,15 +47,44 @@ if "model" in checkpoint:
 
 missing, unexpected = model.load_state_dict(checkpoint, strict=False)
 
-print("Missing keys count:", len(missing))
-print("Unexpected keys count:", len(unexpected))
-print("First missing keys:", missing[:10])
-print("First unexpected keys:", unexpected[:10])
-
 model.to(DEVICE)
 model.eval()
 
 print("UniSign model loaded successfully.")
+
+wholebody = Wholebody(
+    to_openpose=False,
+    mode="lightweight",
+    backend="onnxruntime",
+    device="cuda" if torch.cuda.is_available() else "cpu"
+)
+
+def process_frame(frame):
+    frame = np.uint8(frame)
+    keypoints, scores = wholebody(frame)
+    h, w, c = frame.shape
+    return keypoints, scores, [w, h]
+
+def pose_extraction(video_path):
+    data = {"keypoints": [], "scores": []}
+
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frames.append(frame)
+
+    cap.release()
+
+    for frame in frames:
+        keypoints, scores, w_h = process_frame(frame)
+        data["keypoints"].append(keypoints / np.array(w_h)[None, None])
+        data["scores"].append(scores)
+
+    return data
 
 # =========================
 # ROUTES
@@ -65,103 +101,62 @@ def serve_js():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        print("Received request")
-        data = request.get_json()
+        if "video" not in request.files:
+            return jsonify({"error": "No video uploaded"}), 400
 
-        print("Keys:", data.keys())
-        print("Body shape:", np.array(data["body"]).shape)
-        print("Left shape:", np.array(data["left"]).shape)
-        print("Right shape:", np.array(data["right"]).shape)
-        print("Face shape:", np.array(data["face_all"]).shape)
-        print("Mask shape:", np.array(data["attention_mask"]).shape)
+        video_file = request.files["video"]
 
-        body = torch.tensor(np.array(data["body"]), dtype=torch.float32).unsqueeze(0).to(DEVICE)
-        left = torch.tensor(np.array(data["left"]), dtype=torch.float32).unsqueeze(0).to(DEVICE)
-        right = torch.tensor(np.array(data["right"]), dtype=torch.float32).unsqueeze(0).to(DEVICE)
-        face_all = torch.tensor(np.array(data["face_all"]), dtype=torch.float32).unsqueeze(0).to(DEVICE)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp:
+            video_path = temp.name
+            video_file.save(video_path)
 
-        attention_mask = torch.tensor(
-            np.array(data["attention_mask"]),
-            dtype=torch.long
-        ).unsqueeze(0).to(DEVICE)
+        print("Saved video:", video_path)
 
-        def normalize_skeleton(x):
-            coord = x[..., :2]
-            conf = x[..., 2:]
+        pose_data = pose_extraction(video_path)
 
-            valid = (coord.abs().sum(dim=-1, keepdim=True) > 0).float()
+        online_data = S2T_Dataset_online(args=args)
+        online_data.rgb_data = video_path
+        online_data.pose_data = pose_data
 
-            mean = (coord * valid).sum(dim=(1, 2), keepdim=True) / (
-                valid.sum(dim=(1, 2), keepdim=True) + 1e-6
-            )
-
-            std = torch.sqrt(
-                ((coord - mean) ** 2 * valid).sum(dim=(1, 2), keepdim=True) /
-                (valid.sum(dim=(1, 2), keepdim=True) + 1e-6)
-            )
-
-            coord = (coord - mean) / (std + 1e-6)
-            coord = coord * valid
-
-            return torch.cat([coord, conf], dim=-1)
-
-        body = normalize_skeleton(body)
-        left = normalize_skeleton(left)
-        right = normalize_skeleton(right)
-        face_all = normalize_skeleton(face_all)
-
-        print("Body first frame:", body[0, 0, :, :])
-        print("Left abs sum:", left.abs().sum().item())
-        print("Right abs sum:", right.abs().sum().item())
-        print("Face abs sum:", face_all.abs().sum().item())
-        print(
-            "Input abs total:",
-            body.abs().sum().item()
-            + left.abs().sum().item()
-            + right.abs().sum().item()
-            + face_all.abs().sum().item()
+        online_loader = torch.utils.data.DataLoader(
+            online_data,
+            batch_size=1,
+            collate_fn=online_data.collate_fn,
+            sampler=torch.utils.data.SequentialSampler(online_data)
         )
 
-        src_input = {
-            "body": body,
-            "left": left,
-            "right": right,
-            "face_all": face_all,
-            "attention_mask": attention_mask
-        }
-
-        tgt_input = {
-            "gt_sentence": [""]
-        }
-
         with torch.no_grad():
-            pre_compute = model(src_input, tgt_input)
+            for src_input, tgt_input in online_loader:
+                for key in src_input.keys():
+                    if isinstance(src_input[key], torch.Tensor):
+                        src_input[key] = src_input[key].float().to(DEVICE)
 
-            output_tokens = model.generate(
-                pre_compute,
-                max_new_tokens=30,
-                num_beams=4
-            )
+                output = model.generate(
+                    model(src_input, tgt_input),
+                    max_new_tokens=100,
+                    num_beams=4
+                )
 
-            prediction = model.mt5_tokenizer.batch_decode(
-                output_tokens,
-                skip_special_tokens=True
-            )[0]
+                prediction = model.mt5_tokenizer.batch_decode(
+                    output,
+                    skip_special_tokens=True
+                )[0]
 
-            print("Output tokens:", output_tokens[0].tolist())
-            print("Prediction:", prediction)
+                break
+
+        os.remove(video_path)
+
+        print("Prediction:", prediction)
 
         return jsonify({
             "prediction": prediction,
             "confidence": "Generated",
-            "message": "UniSign live translation completed."
+            "message": "Video UniSign prediction completed."
         })
 
     except Exception as e:
         print("ERROR:", e)
-        return jsonify({
-            "error": str(e)
-        }), 500
+        return jsonify({"error": str(e)}), 500
 
 
 # =========================

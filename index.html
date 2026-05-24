@@ -254,11 +254,11 @@
     <h1>UniSign Live Translator</h1>
 
     <div class="subtitle">
-      Real-time sign language translation using MediaPipe Holistic and UniSign deep learning model.
+      Sign language translation using recorded webcam video, RTMLib Wholebody and UniSign deep learning model.
     </div>
 
     <div class="live-pill">
-      ● Live Detection
+      ● Live Camera
     </div>
 
     <div id="video-container">
@@ -301,11 +301,11 @@
 
     <div class="card">
 
-      <h3>Capture Progress</h3>
+      <h3>Recording Status</h3>
 
       <div class="progress-meta">
-        <span id="frameCount">Captured valid frames: 0 / 30</span>
-        <span id="progressPercent">0%</span>
+        <span id="frameCount">Ready to record video</span>
+        <span id="progressPercent">Ready</span>
       </div>
 
       <div class="progress-track">
@@ -333,8 +333,8 @@
       <h3>Controls</h3>
 
       <div class="button-row">
-        <button id="startBtn">Start Prediction</button>
-        <button id="stopBtn">Stop Prediction</button>
+        <button id="startBtn">Start Recording</button>
+        <button id="stopBtn">Stop Recording</button>
       </div>
 
     </div>
@@ -344,10 +344,10 @@
       <h3>How To Use</h3>
 
       <ul class="tips-list">
-        <li>Click Start Prediction.</li>
-        <li>Keep at least one hand visible.</li>
-        <li>Perform one complete sign clearly.</li>
-        <li>Wait until prediction appears.</li>
+        <li>Click Start Recording.</li>
+        <li>Perform one complete sign clearly for 2–3 seconds.</li>
+        <li>Click Stop Recording when finished.</li>
+        <li>Wait for the backend to process the video.</li>
       </ul>
 
     </div>
@@ -356,15 +356,7 @@
 
 </div>
 
-<!-- MediaPipe -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-
-<!-- Your JS -->
-<<script src="/app.js"></script>
+<script src="/app.js"></script>
 
 </body>
 </html>
