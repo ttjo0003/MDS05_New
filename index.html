@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Uni-Sign ASL Translator</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f0f4f8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      .card {
+        background: white;
+        border-radius: 16px;
+        padding: 40px;
+        width: 520px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      h1 {
+        font-size: 1.8em;
+        margin-bottom: 8px;
+        color: #1a1a2e;
+      }
+      p.sub {
+        color: #666;
+        margin-bottom: 28px;
+        font-size: 0.95em;
+      }
+
+      .upload-area {
+        border: 2px dashed #a0aec0;
+        border-radius: 12px;
+        padding: 30px;
+        cursor: pointer;
+        transition: border-color 0.2s;
+        margin-bottom: 20px;
+      }
+      .upload-area:hover {
+        border-color: #4a90e2;
+      }
+      .upload-area input {
+        display: none;
+      }
+      .upload-area .icon {
+        font-size: 2.5em;
+        margin-bottom: 8px;
+      }
+      .upload-area p {
+        color: #718096;
+      }
+      .file-name {
+        color: #4a90e2;
+        font-weight: 600;
+        margin-top: 8px;
+      }
+
+      video {
+        width: 100%;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      button {
+        background: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 14px 40px;
+        font-size: 1em;
+        cursor: pointer;
+        width: 100%;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #357abd;
+      }
+      button:disabled {
+        background: #a0aec0;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 20px;
+        font-size: 0.9em;
+        color: #718096;
+      }
+      .result-box {
+        margin-top: 24px;
+        background: #ebf8ff;
+        border-left: 4px solid #4a90e2;
+        border-radius: 8px;
+        padding: 16px;
+        display: none;
+      }
+      .result-box .label {
+        font-size: 0.8em;
+        color: #718096;
+        margin-bottom: 4px;
+      }
+      .result-box .prediction {
+        font-size: 1.4em;
+        font-weight: 700;
+        color: #2b6cb0;
+      }
+      .warning {
+        background: #fffbeb;
+        border-left: 4px solid #f6ad55;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 0.85em;
+        color: #744210;
+        margin-bottom: 20px;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>🤟 ASL Translator</h1>
+      <p class="sub">Upload a sign language video to get a translation</p>
+
+      <div class="warning">
+        ⏳ <strong>CPU mode:</strong> Inference may take several minutes per
+        video. Please be patient after clicking Translate.
+      </div>
+
+      <div
+        class="upload-area"
+        onclick="document.getElementById('videoInput').click()"
+      >
+        <div class="icon">📹</div>
+        <p>Click to upload a video</p>
+        <p class="file-name" id="fileName">No file selected</p>
+        <input
+          type="file"
+          id="videoInput"
+          accept="video/*"
+          onchange="onFileSelected(event)"
+        />
+      </div>
+
+      <video id="preview" controls></video>
+
+      <button id="translateBtn" onclick="translate()" disabled>
+        Translate
+      </button>
+
+      <p class="status" id="status"></p>
+
+      <div class="result-box" id="resultBox">
+        <div class="label">Predicted Sign</div>
+        <div class="prediction" id="prediction"></div>
+      </div>
+    </div>
+
+    <script>
+      function onFileSelected(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        document.getElementById("fileName").innerText = file.name;
+
+        const preview = document.getElementById("preview");
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+
+        document.getElementById("translateBtn").disabled = false;
+        document.getElementById("resultBox").style.display = "none";
+        document.getElementById("status").innerText = "";
+      }
+
+      async function translate() {
+        const file = document.getElementById("videoInput").files[0];
+        if (!file) return;
+
+        const btn = document.getElementById("translateBtn");
+        const status = document.getElementById("status");
+        const resultBox = document.getElementById("resultBox");
+
+        btn.disabled = true;
+        btn.innerText = "Translating...";
+        status.innerText =
+          "⏳ Processing video and running inference. This may take a few minutes on CPU...";
+        resultBox.style.display = "none";
+
+        const formData = new FormData();
+        formData.append("video", file);
+
+        try {
+          const res = await fetch("http://localhost:5000/predict", {
+            method: "POST",
+            body: formData
+          });
+          const data = await res.json();
+
+          if (data.error) {
+            status.innerText = "❌ Error: " + data.error;
+          } else {
+            status.innerText = "✅ Done!";
+            document.getElementById("prediction").innerText = data.prediction;
+            resultBox.style.display = "block";
+          }
+        } catch (err) {
+          status.innerText = "❌ Could not reach server. Is server.py running?";
+        } finally {
+          btn.disabled = false;
+          btn.innerText = "Translate";
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -26,7 +26,7 @@ import gzip
 
 
 # global definition
-import deepspeed
+#import deepspeed
 
 import torch
 import torch.nn.functional as F
@@ -34,8 +34,8 @@ from torch import Tensor
 import argparse
 import torch.backends.cudnn as cudnn
 
-import deepspeed.comm as dist
-from deepspeed.accelerator import get_accelerator
+#import deepspeed.comm as dist
+#from deepspeed.accelerator import get_accelerator
 
 
 class SmoothedValue(object):
