@@ -1,6 +1,6 @@
-# ======================
-# MODEL
-# ======================
+from torch import nn
+from torchvision import models
+
 
 class MobileNetLSTM(nn.Module):
     def __init__(self, num_classes, hidden_size=256, num_layers=1):
@@ -26,7 +26,6 @@ class MobileNetLSTM(nn.Module):
         )
 
     def forward(self, x):
-        # x: B, T, C, H, W
         B, T, C, H, W = x.shape
 
         x = x.view(B * T, C, H, W)
@@ -36,7 +35,6 @@ class MobileNetLSTM(nn.Module):
         feat = feat.view(B, T, self.feature_dim)
 
         lstm_out, _ = self.lstm(feat)
-
         final_feat = lstm_out[:, -1, :]
 
         logits = self.classifier(final_feat)
