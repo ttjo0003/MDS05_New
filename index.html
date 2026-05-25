@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UniSign Live Translator</title>
+  <title>Sign Language Translator</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -19,7 +17,6 @@
         radial-gradient(circle at top left, rgba(98,0,234,0.35), transparent 30%),
         radial-gradient(circle at bottom right, rgba(0,188,212,0.28), transparent 30%),
         linear-gradient(135deg, #0b1020, #121a2f 45%, #09111f);
-
       display: flex;
       justify-content: center;
       align-items: center;
@@ -43,16 +40,8 @@
       box-shadow: 0 18px 50px rgba(0,0,0,0.35);
     }
 
-    h1 {
-      margin: 0;
-      font-size: 2rem;
-    }
-
-    .subtitle {
-      margin-top: 10px;
-      color: #bfd0ff;
-      line-height: 1.5;
-    }
+    h1 { margin: 0; font-size: 2rem; }
+    .subtitle { margin-top: 10px; color: #bfd0ff; line-height: 1.5; }
 
     .live-pill {
       display: inline-block;
@@ -75,8 +64,7 @@
       background: #000;
     }
 
-    video,
-    canvas {
+    video, canvas {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -89,7 +77,6 @@
       bottom: 16px;
       left: 16px;
       z-index: 10;
-
       background: rgba(0,0,0,0.6);
       padding: 10px 14px;
       border-radius: 12px;
@@ -104,11 +91,7 @@
       border: 1px solid rgba(255,255,255,0.08);
     }
 
-    .card h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      color: #dce6ff;
-    }
+    .card h3 { margin-top: 0; margin-bottom: 12px; color: #dce6ff; }
 
     #prediction {
       min-height: 100px;
@@ -116,16 +99,9 @@
       display: flex;
       justify-content: center;
       align-items: center;
-
       font-size: 2rem;
       font-weight: 700;
-
-      background: linear-gradient(
-        135deg,
-        rgba(124,77,255,0.22),
-        rgba(0,194,255,0.18)
-      );
-
+      background: linear-gradient(135deg, rgba(124,77,255,0.22), rgba(0,194,255,0.18));
       border: 1px solid rgba(162,191,255,0.2);
     }
 
@@ -133,8 +109,28 @@
       margin-top: 12px;
       color: #c7d7ff;
       text-align: center;
+      font-size: 1rem;
     }
 
+    /* Confidence bar */
+    .conf-bar-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    #confidenceBar {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #7c4dff, #00c2ff);
+      transition: width 0.5s ease;
+    }
+
+    /* Progress bar */
     .progress-track {
       width: 100%;
       height: 12px;
@@ -158,10 +154,8 @@
       color: #c9d6ff;
     }
 
-    .button-row {
-      display: flex;
-      gap: 12px;
-    }
+    /* Buttons */
+    .button-row { display: flex; gap: 12px; }
 
     button {
       flex: 1;
@@ -174,20 +168,11 @@
       transition: 0.2s;
     }
 
-    button:hover {
-      transform: translateY(-1px);
-    }
+    button:hover { transform: translateY(-1px); }
+    #startBtn { background: linear-gradient(135deg, #6d5dfc, #4f9cff); color: white; }
+    #stopBtn  { background: linear-gradient(135deg, #ff6b81, #ff8a5b); color: white; }
 
-    #startBtn {
-      background: linear-gradient(135deg, #6d5dfc, #4f9cff);
-      color: white;
-    }
-
-    #stopBtn {
-      background: linear-gradient(135deg, #ff6b81, #ff8a5b);
-      color: white;
-    }
-
+    /* History */
     .history-list {
       display: flex;
       flex-direction: column;
@@ -199,94 +184,49 @@
     .history-item {
       padding: 12px;
       border-radius: 14px;
-
-      background: linear-gradient(
-        135deg,
-        rgba(124,77,255,0.14),
-        rgba(0,194,255,0.1)
-      );
-
+      background: linear-gradient(135deg, rgba(124,77,255,0.14), rgba(0,194,255,0.1));
       border: 1px solid rgba(162,191,255,0.16);
     }
 
-    .history-word {
-      font-size: 1rem;
-      font-weight: 700;
-    }
+    .history-word { font-size: 1rem; font-weight: 700; }
+    .history-meta { font-size: 0.78rem; color: #8da5d0; margin-top: 4px; }
+    .history-empty { text-align: center; color: #aebfe8; padding: 18px; }
+    .tips-list { line-height: 1.8; color: #d6e1ff; padding-left: 20px; }
 
-    .history-empty {
-      text-align: center;
-      color: #aebfe8;
-      padding: 18px;
-    }
-
-    .tips-list {
-      line-height: 1.8;
-      color: #d6e1ff;
-      padding-left: 20px;
-    }
-
-    @media (max-width: 1100px) {
-      .app-shell {
-        grid-template-columns: 1fr;
-      }
-    }
-
+    @media (max-width: 1100px) { .app-shell { grid-template-columns: 1fr; } }
     @media (max-width: 700px) {
-      .button-row {
-        flex-direction: column;
-      }
-
-      #prediction {
-        font-size: 1.4rem;
-      }
+      .button-row { flex-direction: column; }
+      #prediction { font-size: 1.4rem; }
     }
   </style>
 </head>
 
 <body>
-
 <div class="app-shell">
 
   <!-- LEFT -->
   <section class="panel">
 
-    <h1>UniSign Live Translator</h1>
-
+    <h1>Sign Language Translator</h1>
     <div class="subtitle">
-      Sign language translation using recorded webcam video, RTMLib Wholebody and UniSign deep learning model.
+      Sign language translation using real-time hand gesture recognition.
     </div>
-
-    <div class="live-pill">
-      ● Live Camera
-    </div>
+    <div class="live-pill">● Live Camera</div>
 
     <div id="video-container">
-
       <video id="video" autoplay muted playsinline></video>
-
       <canvas id="canvas"></canvas>
-
-      <div class="overlay-chip" id="overlayStatus">
-        Ready
-      </div>
-
+      <div class="overlay-chip" id="overlayStatus">Ready</div>
     </div>
 
     <div class="card" style="margin-top:20px;">
-
       <h3>Prediction History</h3>
-
       <div class="history-list" id="predictionHistory">
-        <div class="history-empty">
-          No prediction history yet
-        </div>
+        <div class="history-empty">No prediction history yet</div>
       </div>
-
       <div id="previousConfidence" style="margin-top:10px;color:#b7cbff;">
         Previous confidence: --
       </div>
-
     </div>
 
   </section>
@@ -300,56 +240,41 @@
     </div>
 
     <div class="card">
-
       <h3>Recording Status</h3>
-
       <div class="progress-meta">
         <span id="frameCount">Ready to record video</span>
         <span id="progressPercent">Ready</span>
       </div>
-
       <div class="progress-track">
         <div class="progress-fill" id="progressFill"></div>
       </div>
-
     </div>
 
     <div class="card">
-
       <h3>Prediction Result</h3>
-
-      <div id="prediction">
-        Waiting...
+      <div id="prediction">Waiting...</div>
+      <div id="confidence">Confidence: --</div>
+      <div class="conf-bar-track">
+        <div id="confidenceBar"></div>
       </div>
-
-      <div id="confidence">
-        Confidence: --
-      </div>
-
     </div>
 
     <div class="card">
-
       <h3>Controls</h3>
-
       <div class="button-row">
         <button id="startBtn">Start Recording</button>
         <button id="stopBtn">Stop Recording</button>
       </div>
-
     </div>
 
     <div class="card">
-
       <h3>How To Use</h3>
-
       <ul class="tips-list">
         <li>Click Start Recording.</li>
         <li>Perform one complete sign clearly for 2–3 seconds.</li>
         <li>Click Stop Recording when finished.</li>
-        <li>Wait for the backend to process the video.</li>
+        <li>Wait for the prediction to appear.</li>
       </ul>
-
     </div>
 
   </aside>
@@ -357,6 +282,5 @@
 </div>
 
 <script src="/app.js"></script>
-
 </body>
 </html>
